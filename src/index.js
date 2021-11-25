@@ -1,59 +1,108 @@
 import './css/styles.css';
-import debounce from 'lodash.debounce';
-import { Notify } from 'notiflix/build/notiflix-notify-aio';
-import { fetchCountries } from './fetchCountries';
+import RestCountriesAPI from "./fetchCountries";
+import { debounce } from 'lodash';
 
 const DEBOUNCE_DELAY = 300;
+const refs = {
+  searchBox: document.querySelector("input#search-box"),
+  countryList: document.querySelector(".country-list"),
+  countryInfo: document.querySelector(".country-info"),
+};
+let name = '';
+const restCountriesAPI = new RestCountriesAPI();
 
-const boxInput = document.querySelector('[id="search-box"]');
-const containerInfo = document.querySelector('.country-info');
-const listContainer = document.querySelector('.country-list');
+refs.searchBox.addEventListener("input",
+  debounce(onSearch, DEBOUNCE_DELAY, { trailing: true }));
 
-function showCountry() {
-  fetchCountries(boxInput.value.trim())
-    .then(country => {
-      containerInfo.innerHTML = '';
-      listContainer.innerHTML = '';
+function onSearch(e) {
+  e.preventDefault();
+  
+  name = e.path[0].value.trim();
+  refs.countryInfo.innerHTML = '';
+  refs.countryList.innerHTML = '';
 
-      if (country.length > 10) {
-        Notify.info('Too many matches found. Please enter a more specific name.');
-      } else if (country.length >= 2 && country.length <= 10) {
-        listCountry(country);
-      } else if (country.length === 1) {
-        infoCountry(country);
+  if (name !== "") {
+    restCountriesAPI.name = name;
+    restCountriesAPI.fetchCountries(name).then(countryGetInfo => {
+      renderCountryInfo(countryGetInfo);
+    });
+  }
+};
+
+function renderCountryInfo(countryGetInfo) {
+    for (const key in countryGetInfo) {
+    if (Object.hasOwnProperty.call(countryGetInfo, key)) {
+        
+      const element = countryGetInfo[key];
+      console.log(element);
+      console.log(countryGetInfo);
+
+      const { name, capital, population, flags, languages
+      } = element;
+  
+ 
+      console.log(countryGetInfo.length)
+       if (countryGetInfo.length > 1 && countryGetInfo.length < 10) {
+        refs.countryInfo.innerHTML = '';
+        refs.countryList.innerHTML = '';
+        
+        return AddCountryList(countryGetInfo);
+        
+      } if (countryGetInfo.length === 1) {
+        refs.countryList.innerHTML = '';
+        refs.countryInfo.innerHTML = '';
+        
+        return AddCountryFullInfo(countryGetInfo);
+
+      } if (countryGetInfo.length > 10) {
+        
+        refs.countryList.innerHTML = '';
+        refs.countryInfo.innerHTML = '';   
       }
-    })
-    .catch(showError);
-}
 
-function listCountry(country) {
-  const markup = country
-    .map(({ flags, name }) => {
-      return `<li class="country-list"> 
-      <img class="flag-list" src ="${flags.svg}" alt="Flag of ${name.common}"  width="50"/>
-      <span class = "name-list">${name.common}</span></li>`;
-    })
-    .join('');
-  listContainer.innerHTML = markup;
-}
+      function AddCountryFullInfo() {
+        return refs.countryInfo.insertAdjacentHTML("beforeend", `<div class="flag-country-block">
+        <img
+          class="flag"
+          src="${flags.svg}"
+          alt="flag"
+        />
+        <h1>${name.official}</h1>
+      </div>
+      <ul class="country-info-details">
+        <li class="country-info-item">
+          <h2>Capital:</h2>
+          <span class="info-value">${capital}</span>
+        </li>
+        <li class="country-info-item">
+          <h2>Population:</h2>
+          <span class="info-value">${population}</span
+          >
+        </li>
+        <li class="country-info-item">
+          <h2>Languages:</h2>
+          <span class="info-value">${Object.values(languages)}</span
+          >
+        </li>
+      </ul>`);
+    }
+    }
+  }
+};
 
-function infoCountry([{ name, flags, capital, population, languages }]) {
-  containerInfo.innerHTML = `<img src ="${flags.svg}" class="flags"  alt="Flag of ${
-    name.official
-  }" width="50"/>
-         <span class="country-name">${name.official}</span>
-       <p class = "info"> Capital: <span class = "info-span">${capital}</span></p>
-       <p class = "info"> Population: <span class = "info-span">${population}</span></p>
-       <p class = "info"> Languages: <span class = "info-span">${Object.values(languages).join(
-         ', ',
-       )}
-        </span></p>`;
-}
+function AddCountryList(countryGetInfo) {
+const markup = countryGetInfo.map((item) => {
+    console.log(item);
 
-function showError(error) {
-  Notify.failure('Oops, there is no country with that name');
-  containerInfo.innerHTML = '';
-  listContainer.innerHTML = '';
-}
+    return `<li class="country-list-item">
+        <img
+          class="flag-list"
+          src="${item.flags.svg}"
+          alt="flag"
+          />
+        <h2 class="list-item-h2">${item.name.official}</h2>
+      </li>`
+  }).join("");
 
-boxInput.addEventListener('input', debounce(showCountry, DEBOUNCE_DELAY));
+  refs.countryList.insertAdjacentHTML("beforeend", markup);
+ };
